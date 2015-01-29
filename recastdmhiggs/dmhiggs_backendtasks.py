@@ -103,14 +103,14 @@ def rivet(jobguid):
 
   yodafile = '{}/Rivet.yoda'.format(workdir)
   plotdir = '{}/plots'.format(workdir)
-  analysisdir = os.path.abspath('../implementation/rivet')
+  analysisdir = os.path.abspath('rivet')
   socketlog('another','running rivet')
 
   subprocess.call(['rivet','-a','DMHiggsFiducial','-H',yodafile,'--analysis-path={}'.format(analysisdir)]+hepmcfiles)
 
 
   socketlog('another','preparing plots')
-  subprocess.call(['rivet-mkhtml','-c','../implementation/rivet/DMHiggsFiducial.plot','-o',plotdir,yodafile])
+  subprocess.call(['rivet-mkhtml','-c','rivet/DMHiggsFiducial.plot','-o',plotdir,yodafile])
   
   return jobguid
   
@@ -136,14 +136,14 @@ def pythia(jobguid):
     steeringfname = '{}/{}.steering'.format(workdir,basefname)
     outfname = workdir+'/'+'.'.join(basefname.split('.')[0:-1]+['hepmc'])
 
-    with open('../implementation/pythiasteering.tplt') as steeringfile:
+    with open('pythiasteering.tplt') as steeringfile:
       template = env.from_string(steeringfile.read())
       with open(steeringfname,'w+') as output:
         output.write(template.render({'INPUTLHEF':absinputfname}))
 
     socketlog('another','running pythia on input file {}/{}'.format(i+1,len(eventfiles)))
     
-    subprocess.call(['../implementation/pythia/pythiarun',steeringfname,outfname])
+    subprocess.call(['pythia/pythiarun',steeringfname,outfname])
   
   return jobguid
 
