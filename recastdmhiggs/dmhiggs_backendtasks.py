@@ -69,7 +69,7 @@ def postresults(jobguid,requestId,parameter_point):
     base = BACKENDBASEPATH,
     requestId = requestId)
   ,shell = True)
-  subprocess.call(['scp', '-r', resultdir,'{user}@{host}:{base}/results/{requestId}/{point}'.format(
+  subprocess.call(['scp', '-r', resultdir,'{user}@{host}:{base}/results/{requestId}'.format(
     user = BACKENDUSER,
     host = BACKENDHOST,
     base = BACKENDBASEPATH,
