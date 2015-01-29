@@ -1,9 +1,16 @@
 import time
 from celery import Celery,task
 
-CELERY_RESULT_BACKEND = 'redis://lheinric-recast-hype:6379/0'
+BACKENDUSER = 'lukas'
+BACKENDHOST = 'localhost'
+BACKENDBASEPATH = '/Users/lukas/Code/atlas/recast/recast-frontend-prototype'
+# BACKENDUSER = 'ciserver'
+# BACKENDHOST = 'lheinric-recast-hype'
+# BACKENDBASEPATH = '/home/ciserver/recast/recast-frontend-prototype'
 
-app = Celery('tasks', backend='redis://lheinric-recast-hype', broker='redis://lheinric-recast-hype')
+CELERY_RESULT_BACKEND = 'redis://{}:6379/0'.format(BACKENDHOST)
+
+app = Celery('tasks', backend='redis://{}'.format(BACKENDHOST), broker='redis://{}'.format(BACKENDHOST))
 
 
 import subprocess
@@ -17,9 +24,15 @@ import redis
 import emitter
 import zipfile
 
-red = redis.StrictRedis(host = 'lheinric-recast-hype', db = 0)
+red = redis.StrictRedis(host = BACKENDHOST, db = 0)
 io  = emitter.Emitter({'client': red})
 
+
+from datetime import datetime
+
+def socketlog(jobguid,msg):
+  io.Of('/monitor').In(jobguid).Emit('room_msg',{'date':datetime.now().strftime('%Y-%m-%d %X'),'msg':msg})
+  
 import requests
 def download_file(url,download_dir):
     local_filename = url.split('/')[-1]
@@ -46,11 +59,25 @@ def postresults(jobguid,requestId,parameter_point):
   shutil.copytree('{}/plots'.format(workdir),'{}/plots'.format(resultdir))
   shutil.copyfile('{}/Rivet.yoda'.format(workdir),'{}/Rivet.yoda'.format(resultdir))
   
+
+  socketlog('another','uploading resuls')
+
   #also copy to server
-  subprocess.call('''ssh ciserver@lheinric-recast-hype "mkdir -p /home/ciserver/recast/recast-frontend-prototype/results/{}"'''.format(requestId),shell = True)
-  subprocess.call(['scp', '-r', resultdir,'ciserver@lheinric-recast-hype:/home/ciserver/recast/recast-frontend-prototype/results/{}/{}'.format(requestId,parameter_point)])
+  subprocess.call('''ssh {user}@{host} "mkdir -p {base}/results/{requestId}"'''.format(
+    user = BACKENDUSER,
+    host = BACKENDHOST,
+    base = BACKENDBASEPATH,
+    requestId = requestId)
+  ,shell = True)
+  subprocess.call(['scp', '-r', resultdir,'{user}@{host}:{base}/results/{requestId}/{point}'.format(
+    user = BACKENDUSER,
+    host = BACKENDHOST,
+    base = BACKENDBASEPATH,
+    requestId = requestId,
+    point = parameter_point
+  )])
   
-  io.Of('/monitor').In(str(jobguid)).Emit('results_done')
+  socketlog('another','done')
   return requestId
 
 
@@ -77,9 +104,13 @@ def rivet(jobguid):
   yodafile = '{}/Rivet.yoda'.format(workdir)
   plotdir = '{}/plots'.format(workdir)
   analysisdir = os.path.abspath('../implementation/rivet')
+  socketlog('another','running rivet')
+
   subprocess.call(['rivet','-a','DMHiggsFiducial','-H',yodafile,'--analysis-path={}'.format(analysisdir)]+hepmcfiles)
+
+
+  socketlog('another','preparing plots')
   subprocess.call(['rivet-mkhtml','-c','../implementation/rivet/DMHiggsFiducial.plot','-o',plotdir,yodafile])
-  io.Of('/monitor').In(str(jobguid)).Emit('rivet_done')
   
   return jobguid
   
@@ -98,7 +129,7 @@ def pythia(jobguid):
 
   if not eventfiles: raise IOError
 
-  for file in eventfiles:
+  for i,file in enumerate(eventfiles):
     absinputfname = os.path.abspath(file)
     basefname = os.path.basename(absinputfname)
 
@@ -110,9 +141,9 @@ def pythia(jobguid):
       with open(steeringfname,'w+') as output:
         output.write(template.render({'INPUTLHEF':absinputfname}))
 
+    socketlog('another','running pythia on input file {}/{}'.format(i+1,len(eventfiles)))
+    
     subprocess.call(['../implementation/pythia/pythiarun',steeringfname,outfname])
-
-  io.Of('/monitor').In(str(jobguid)).Emit('pythia_done')
   
   return jobguid
 
@@ -127,8 +158,10 @@ def prepare_job(jobguid,jobinfo):
   input_url = jobinfo['run-condition'][0]['lhe-file']
   print "downloading file : {}".format(input_url) 
   filepath = download_file(input_url,workdir)
-  
+
   print "downloaded file to: {}".format(filepath)
+  socketlog('another','downloaded input files')
+
 
   with zipfile.ZipFile(filepath)as f:
     f.extractall('{}/inputs'.format(workdir)) 
@@ -141,11 +174,8 @@ def prepare_workdir(fileguid,jobguid):
   workdir = 'workdirs/{}'.format(jobguid)
   
   os.makedirs(workdir)
-  # os.symlink(os.path.abspath(uploaddir),workdir+'/inputs')
-  io.Of('/monitor').Emit('pubsubmsg','prepared workdirectory...')
 
-  print "emitting to room"
-  io.Of('/monitor').In(str(jobguid)).Emit('workdir_done','prepared workdirectory...')
+  socketlog('another','prepared workdir')
 
   return jobguid
   
@@ -153,6 +183,17 @@ def prepare_workdir(fileguid,jobguid):
 import recastapi.request
 import json
 import uuid
+
+import time
+@task
+def testemit():
+  print "sleeping for 5 seconds"
+  time.sleep(5)
+  print "emitting"
+  for i in range(10):
+    time.sleep(1)
+    socketlog('another','counting to {}'.format(i))
+  
 
 def get_chain(request_uuid,point):
 
@@ -164,11 +205,13 @@ def get_chain(request_uuid,point):
 
   analysis_queue = 'dmhiggs_queue'  
 
+  # chain = testemit.subtask(queue=analysis_queue)
+
   chain = (
             prepare_workdir.subtask((request_uuid,jobguid),queue=analysis_queue) |
             prepare_job.subtask((jobinfo,),queue=analysis_queue)                 |
             pythia.subtask(queue=analysis_queue)                                 |
             rivet.subtask(queue=analysis_queue)                                  |
-            postresults.subtask((request_uuid,point),queue=analysis_queue) 
+            postresults.subtask((request_uuid,point),queue=analysis_queue)
           )
   return (jobguid,chain)  
