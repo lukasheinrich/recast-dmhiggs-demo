@@ -1,9 +1,13 @@
 import time
 from celery import Celery,task
 
-CELERY_RESULT_BACKEND = 'redis://lheinric-recast-hype:6379/0'
+BACKENDHOST = 'lheinric-recast-hype'
+BACKENDUSER = 'analysis'
+BACKENDBASEPATH = '/home/analysis/recast'
 
-app = Celery('tasks', backend='redis://lheinric-recast-hype', broker='redis://lheinric-recast-hype')
+CELERY_RESULT_BACKEND = 'redis://:6379/0'.format(BACKENDHOST)
+
+app = Celery('tasks', backend='redis://{}'.format(BACKENDHOST), broker='redis://{}'.format(BACKENDHOST))
 
 
 import subprocess
@@ -17,7 +21,7 @@ import redis
 import emitter
 import zipfile
 
-red = redis.StrictRedis(host = 'lheinric-recast-hype', db = 0)
+red = redis.StrictRedis(host = BACKENDHOST, db = 0)
 io  = emitter.Emitter({'client': red})
 
 import requests
@@ -47,8 +51,17 @@ def postresults(jobguid,requestId,parameter_point):
   shutil.copyfile('{}/Rivet.yoda'.format(workdir),'{}/Rivet.yoda'.format(resultdir))
   
   #also copy to server
-  subprocess.call('''ssh ciserver@lheinric-recast-hype "mkdir -p /home/ciserver/recast/recast-frontend-prototype/results/{}"'''.format(requestId),shell = True)
-  subprocess.call(['scp', '-r', resultdir,'ciserver@lheinric-recast-hype:/home/ciserver/recast/recast-frontend-prototype/results/{}/{}'.format(requestId,parameter_point)])
+  subprocess.call('''ssh {}@{} "mkdir -p {}/recast-frontend-prototype/results/{}"'''.format(
+                        BACKENDUSER,
+                        BACKENDHOST,
+                        BACKENDBASEPATH,
+                        requestId),shell = True)
+  subprocess.call(['scp', '-r', resultdir,'{}@{}:{}/recast-frontend-prototype/results/{}/{}'.format(
+                                            BACKENDUSER,
+                                            BACKENDHOST,
+                                            BACKENDBASEPATH,
+                                            requestId,
+                                            parameter_point)])
   
   io.Of('/monitor').In(str(jobguid)).Emit('results_done')
   return requestId
