@@ -1,12 +1,12 @@
 import time
 from celery import Celery,task
 
-BACKENDUSER = 'lukas'
-BACKENDHOST = 'localhost'
-BACKENDBASEPATH = '/Users/lukas/Code/atlas/recast/recast-frontend-prototype'
-# BACKENDUSER = 'ciserver'
-# BACKENDHOST = 'lheinric-recast-hype'
-# BACKENDBASEPATH = '/home/ciserver/recast/recast-frontend-prototype'
+# BACKENDUSER = 'lukas'
+# BACKENDHOST = 'localhost'
+# BACKENDBASEPATH = '/Users/lukas/Code/atlas/recast/recast-frontend-prototype'
+BACKENDUSER = 'analysis'
+BACKENDHOST = 'recast-demo'
+BACKENDBASEPATH = '/home/analysis/recast/recast-frontend-prototype'
 
 CELERY_RESULT_BACKEND = 'redis://{}:6379/0'.format(BACKENDHOST)
 
