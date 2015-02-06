@@ -113,6 +113,14 @@ def rivet(jobguid):
   subprocess.call(['rivet-mkhtml','-c','rivet/DMHiggsFiducial.plot','-o',plotdir,yodafile])
   
   return jobguid
+
+def isLesHouches(file):
+  print "trying file {}".format(file)
+  try:
+      e,el = ET.iterparse(file,events=['start','end']).next()
+      return (e=='start' and el.tag =='LesHouchesEvents')
+  except:
+      return False
   
 @task
 def pythia(jobguid):
@@ -120,7 +128,8 @@ def pythia(jobguid):
 
   fileglob = "{}/inputs/*.events".format(workdir)
   print "looking for files: {}".format(fileglob)
-  eventfiles = glob.glob("{}/inputs/*.events".format(workdir))
+
+  eventfiles = filter(isLesHouches,glob.glob("{}/inputs/*".format(workdir)))
   
   print 'found {} event files'.format(len(eventfiles))
   
