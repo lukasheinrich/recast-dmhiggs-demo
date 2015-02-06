@@ -31,7 +31,7 @@ io  = emitter.Emitter({'client': red})
 from datetime import datetime
 
 def socketlog(jobguid,msg):
-  io.Of('/monitor').In(jobguid).Emit('room_msg',{'date':datetime.now().strftime('%Y-%m-%d %X'),'msg':msg})
+  io.Of('/monitor').In(str(jobguid)).Emit('room_msg',{'date':datetime.now().strftime('%Y-%m-%d %X'),'msg':msg})
   
 import requests
 def download_file(url,download_dir):
@@ -60,7 +60,7 @@ def postresults(jobguid,requestId,parameter_point):
   shutil.copyfile('{}/Rivet.yoda'.format(workdir),'{}/Rivet.yoda'.format(resultdir))
   
 
-  socketlog('another','uploading resuls')
+  socketlog(jobguid,'uploading resuls')
 
   #also copy to server
   subprocess.call('''ssh {user}@{host} "mkdir -p {base}/results/{requestId}"'''.format(
@@ -77,7 +77,7 @@ def postresults(jobguid,requestId,parameter_point):
     point = parameter_point
   )])
   
-  socketlog('another','done')
+  socketlog(jobguid,'done')
   return requestId
 
 
@@ -104,12 +104,12 @@ def rivet(jobguid):
   yodafile = '{}/Rivet.yoda'.format(workdir)
   plotdir = '{}/plots'.format(workdir)
   analysisdir = os.path.abspath('rivet')
-  socketlog('another','running rivet')
+  socketlog(jobguid,'running rivet')
 
   subprocess.call(['rivet','-a','DMHiggsFiducial','-H',yodafile,'--analysis-path={}'.format(analysisdir)]+hepmcfiles)
 
 
-  socketlog('another','preparing plots')
+  socketlog(jobguid,'preparing plots')
   subprocess.call(['rivet-mkhtml','-c','rivet/DMHiggsFiducial.plot','-o',plotdir,yodafile])
   
   return jobguid
@@ -141,7 +141,7 @@ def pythia(jobguid):
       with open(steeringfname,'w+') as output:
         output.write(template.render({'INPUTLHEF':absinputfname}))
 
-    socketlog('another','running pythia on input file {}/{}'.format(i+1,len(eventfiles)))
+    socketlog(jobguid,'running pythia on input file {}/{}'.format(i+1,len(eventfiles)))
     
     subprocess.call(['pythia/pythiarun',steeringfname,outfname])
   
@@ -156,11 +156,12 @@ def prepare_job(jobguid,jobinfo):
   workdir = 'workdirs/{}'.format(jobguid)
 
   input_url = jobinfo['run-condition'][0]['lhe-file']
-  print "downloading file : {}".format(input_url) 
+  socketlog(jobguid,'downloading input files')
+
   filepath = download_file(input_url,workdir)
 
   print "downloaded file to: {}".format(filepath)
-  socketlog('another','downloaded input files')
+  socketlog(jobguid,'downloaded input files')
 
 
   with zipfile.ZipFile(filepath)as f:
@@ -175,7 +176,7 @@ def prepare_workdir(fileguid,jobguid):
   
   os.makedirs(workdir)
 
-  socketlog('another','prepared workdir')
+  socketlog(jobguid,'prepared workdir')
 
   return jobguid
   
@@ -185,14 +186,6 @@ import json
 import uuid
 
 import time
-@task
-def testemit():
-  print "sleeping for 5 seconds"
-  time.sleep(5)
-  print "emitting"
-  for i in range(10):
-    time.sleep(1)
-    socketlog('another','counting to {}'.format(i))
   
 
 def get_chain(request_uuid,point):
