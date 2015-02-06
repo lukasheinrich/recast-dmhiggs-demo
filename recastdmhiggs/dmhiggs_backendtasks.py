@@ -114,12 +114,13 @@ def rivet(jobguid):
   
   return jobguid
 
+import xml.etree.ElementTree as ET
 def isLesHouches(file):
   print "trying file {}".format(file)
   try:
       e,el = ET.iterparse(file,events=['start','end']).next()
       return (e=='start' and el.tag =='LesHouchesEvents')
-  except:
+  except ParseError:
       return False
   
 @task
@@ -132,7 +133,7 @@ def pythia(jobguid):
   eventfiles = filter(isLesHouches,glob.glob("{}/inputs/*".format(workdir)))
   
   print 'found {} event files'.format(len(eventfiles))
-  
+
   env = jinja2.Environment(undefined=jinja2.StrictUndefined)
 
 
