@@ -115,7 +115,9 @@ def rivet(jobguid):
   return jobguid
 
 import xml.etree.ElementTree as ET
+from xml.etree.ElementTree import ParseError
 def isLesHouches(file):
+  if not os.path.isfile(file): return False
   print "trying file {}".format(file)
   try:
       e,el = ET.iterparse(file,events=['start','end']).next()
