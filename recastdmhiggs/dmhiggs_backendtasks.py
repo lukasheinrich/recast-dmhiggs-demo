@@ -6,7 +6,7 @@ from celery import Celery,task
 # BACKENDBASEPATH = '/Users/lukas/Code/atlas/recast/recast-frontend-prototype'
 BACKENDUSER = 'analysis'
 BACKENDHOST = 'recast-demo'
-BACKENDBASEPATH = '/home/analysis/recast/recast-frontend-prototype'
+BACKENDBASEPATH = '/home/analysis/recast/recaststorage'
 
 CELERY_RESULT_BACKEND = 'redis://{}:6379/0'.format(BACKENDHOST)
 
