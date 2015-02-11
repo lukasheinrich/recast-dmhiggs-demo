@@ -62,7 +62,7 @@ def postresults(jobguid,requestId,parameter_point):
   socketlog(jobguid,'uploading resuls')
 
   #also copy to server
-  subprocess.call('''ssh {user}@{host} "mkdir -p {base}/results/{requestId}/{point}"'''.format(
+  subprocess.call('''ssh {user}@{host} "mkdir -p {base}/results/{requestId}/{point} && rm -rf {base}/results/{requestId}/{point}/dedicated"'''.format(
     user = BACKENDUSER,
     host = BACKENDHOST,
     base = BACKENDBASEPATH,
