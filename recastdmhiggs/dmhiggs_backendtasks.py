@@ -7,7 +7,6 @@ from celery import Celery,task
 BACKENDUSER = 'analysis'
 BACKENDHOST = 'recast-demo'
 BACKENDBASEPATH = '/home/analysis/recast/recaststorage'
-
 CELERY_RESULT_BACKEND = 'redis://{}:6379/0'.format(BACKENDHOST)
 
 app = Celery('tasks', backend='redis://{}'.format(BACKENDHOST), broker='redis://{}'.format(BACKENDHOST))
@@ -83,7 +82,7 @@ def postresults(jobguid,requestId,parameter_point):
 
 @task
 def fiducialeff(requestId,parameter_pt):
-  resultdir = 'results/{}/{}'.format(requestId,parameter_pt)
+  resultdir = '{}/results/{}/{}'.format(BACKENDBASEPATH,requestId,parameter_pt)
   yodafile = '{}/Rivet.yoda'.format(resultdir)
   histos = yoda.readYODA(yodafile)
   cutflow = histos['/DMHiggsFiducial/Cutflow']
