@@ -49,7 +49,7 @@ def download_file(url,download_dir):
 def postresults(jobguid,requestId,parameter_point):
   workdir = 'workdirs/{}'.format(jobguid)
   yodafile = '{}/Rivet.yoda'.format(workdir)
-  resultdir = 'results/{}/{}'.format(requestId,parameter_point)
+  resultdir = 'results/{}/{}/dedicated'.format(requestId,parameter_point)
   
   if(os.path.exists(resultdir)):
     shutil.rmtree(resultdir)
@@ -82,7 +82,7 @@ def postresults(jobguid,requestId,parameter_point):
 
 @task
 def fiducialeff(requestId,parameter_pt):
-  resultdir = '{}/results/{}/{}'.format(BACKENDBASEPATH,requestId,parameter_pt)
+  resultdir = '{}/results/{}/{}/dedicated'.format(BACKENDBASEPATH,requestId,parameter_pt)
   yodafile = '{}/Rivet.yoda'.format(resultdir)
   histos = yoda.readYODA(yodafile)
   cutflow = histos['/DMHiggsFiducial/Cutflow']
