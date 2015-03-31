@@ -84,7 +84,7 @@ def postresults(jobguid,requestId,parameter_point):
 
 @task
 def fiducialeff(requestId,parameter_pt):
-  resultdir = '{}/results/{}/{}'.format(BACKENDBASEPATH,requestId,parameter_pt)
+  resultdir = '{}/results/{}/{}/dedicated'.format(BACKENDBASEPATH,requestId,parameter_pt)
   yodafile = '{}/Rivet.yoda'.format(resultdir)
   histos = yoda.readYODA(yodafile)
   cutflow = histos['/DMHiggsFiducial/Cutflow']
