@@ -1,19 +1,14 @@
-import time
-from celery import shared_task
-
 import subprocess
 import glob
 import jinja2
 import yoda
 import os
-import shutil
 import yaml
+import logging
 
-import zipfile
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger('RECAST')
 
-from recastbackend.logging import socketlog
-
-@shared_task
 def fiducialeff(jobguid):
   workdir = 'workdirs/{}'.format(jobguid)
   yodafile = '{}/Rivet.yoda'.format(workdir)
@@ -21,14 +16,11 @@ def fiducialeff(jobguid):
   cutflow = histos['/DMHiggsFiducial/Cutflow']
   efficiency = cutflow.bins[-1].area/cutflow.bins[0].area
 
-  socketlog(jobguid,'calculated efficiency: {}'.format(efficiency))
+  log.info('calculated efficiency: {}'.format(efficiency))
 
   with open('{}/results.yaml'.format(workdir),'w') as f:
     f.write(yaml.dump({'efficiency':efficiency},default_flow_style=False))
       
-  return jobguid
-
-@shared_task
 def rivet(jobguid):
   workdir = 'workdirs/{}'.format(jobguid)
   hepmcfiles = glob.glob('{}/*.hepmc'.format(workdir))
@@ -38,16 +30,14 @@ def rivet(jobguid):
   yodafile = '{}/Rivet.yoda'.format(workdir)
   plotdir = '{}/plots'.format(workdir)
   analysisdir = os.path.abspath('rivet')
-  socketlog(jobguid,'running rivet')
+  log.info('running rivet')
 
   subprocess.call(['rivet','-a','DMHiggsFiducial','-H',yodafile,'--analysis-path={}'.format(analysisdir)]+hepmcfiles)
 
 
-  socketlog(jobguid,'preparing plots')
+  log.info('preparing plots')
   subprocess.call(['rivet-mkhtml','-c','rivet/DMHiggsFiducial.plot','-o',plotdir,yodafile])
   
-  return jobguid
-
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import ParseError
 def isLesHouches(file):
@@ -59,7 +49,6 @@ def isLesHouches(file):
   except ParseError:
       return False
   
-@shared_task
 def pythia(jobguid):
   workdir = 'workdirs/{}'.format(jobguid)
 
@@ -87,19 +76,22 @@ def pythia(jobguid):
       with open(steeringfname,'w+') as output:
         output.write(template.render({'INPUTLHEF':absinputfname}))
 
-    socketlog(jobguid,'running pythia on input file {}/{}'.format(i+1,len(eventfiles)))
+    log.info('running pythia on input file {}/{}'.format(i+1,len(eventfiles)))
     
     subprocess.call(['pythia/pythiarun',steeringfname,outfname])
   
+
+def recast(ctx):
+  jobguid = ctx['jobguid']
+  log.info('running single function')
+  log.info('hello we are logging with logging module')
+  log.debug('hello we are logging on debug')
+
+  pythia(jobguid)
+  rivet(jobguid)
+  fiducialeff(jobguid)
+  log.info('finished. thanks.')
   return jobguid
 
 def resultlist():
   return ['Rivet.yoda','plots','results.yaml']
-
-def get_chain(queuename):
-  chain = (
-            pythia.subtask(queue=queuename) |
-            rivet.subtask(queue=queuename)  |
-            fiducialeff.subtask(queue=queuename)
-          )
-  return chain
