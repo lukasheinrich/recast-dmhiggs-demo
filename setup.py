@@ -12,8 +12,14 @@ setup(
   install_requires = [
     'Flask',
     'yoda',
-    'pyyaml'
+    'pyyaml',
+    'adage',
+    'click'
   ],
-  dependency_links = [      
+    entry_points = {
+        'console_scripts': ['recastworkflow-dmhiggs=recastdmhiggs.recastworkflowcli:run_workflow'],
+    },
+    dependency_links = [
+    'https://github.com/lukasheinrich/adage/tarball/master#egg=adage-0.1.1',
   ]
 )
